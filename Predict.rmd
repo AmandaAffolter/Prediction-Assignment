@@ -1,0 +1,98 @@
+---
+title: "Practical Machine Learning Project"
+output:
+  html_document: default
+  pdf_document: default
+---
+Background
+ Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+ 
+Data
+ The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+Loading Data 
+
+```{r train, echo = TRUE}
+training <- read.csv("C://Users//aaffol01//Desktop//Data Science//Coursera//Projects//practical machine learning//pml-training.csv", na.strings=c("#DIV/0!"), row.names=1)
+testing <- read.csv("C://Users//aaffol01//Desktop//Data Science//Coursera//Projects//practical machine learning\\pml-testing.csv", na.strings=c("#DIV/0!"), row.names=1)
+```
+
+```{r seed, echo = TRUE}
+library(caret)
+set.seed(123456)
+trainset <- createDataPartition(training$classe, p = 0.8, list = FALSE)
+Training <- training[trainset, ]
+Validation <- training[-trainset, ]
+```
+
+Cleaning Data
+
+```{r clean, echo = TRUE}
+
+zerovariance <- nearZeroVar(Training)
+Training <- Training[, -zerovariance]
+
+cntlength <- sapply(Training, function(x) {
+    sum(!(is.na(x) | x == ""))
+})
+
+null <- names(cntlength[cntlength < 0.6 * length(Training$classe)])
+description <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", 
+    "cvtd_timestamp", "new_window", "num_window")
+excludecolumns <- c(description, null)
+Training <- Training[, !names(Training) %in% excludecolumns]
+```
+
+Model: Random Forest
+
+```{r forest, echo = TRUE}
+library(randomForest)
+model1 <- randomForest(classe ~ ., data= Training, importance = TRUE, ntrees = 10)
+```
+
+Validating Model and Cross Validation
+
+```{r val, echo = TRUE}
+ptraining <- predict(model1, Training)
+print(confusionMatrix(ptraining, Training$classe))
+```
+
+```{r cross, echo = TRUE}
+pvalidation <- predict(model1, Validation)
+print(confusionMatrix(pvalidation, Validation$classe))
+```
+
+
+Results
+
+Our model preforms well as the cross validation accuracy is 99.5% and out-of-sample error is .5% 
+
+Submission
+
+
+```{r test, echo = TRUE}
+ptest <- predict(model1, testing)
+ptest
+```
+
+```{r sub, echo = TRUE}
+answers <- as.vector(ptest)
+pml_write_files = function(x){
+n = length(x)
+for(i in 1:n){
+filename = paste0("problem_id_",i,".txt")
+write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)}}
+```
+
+```{r fin, echo = TRUE}
+pml_write_files(answers)
+```
+
